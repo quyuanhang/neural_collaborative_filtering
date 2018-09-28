@@ -7,13 +7,13 @@ He Xiangnan et al. Neural Collaborative Filtering. In WWW 2017.
 @author: Xiangnan He (xiangnanhe@gmail.com)
 '''
 import numpy as np
-import theano.tensor as T
+# import theano.tensor as T
 import keras
 from keras import backend as K
-from keras import initializations
+from keras import initializers
 from keras.models import Sequential, Model, load_model, save_model
 from keras.layers.core import Dense, Lambda, Activation
-from keras.layers import Embedding, Input, Dense, merge, Reshape, Merge, Flatten
+from keras.layers import Embedding, Input, Dense, Reshape, Flatten
 from keras.optimizers import Adagrad, Adam, SGD, RMSprop
 from keras.regularizers import l2
 from Dataset import Dataset
@@ -51,25 +51,26 @@ def parse_args():
                         help='Whether to save the trained model.')
     return parser.parse_args()
 
-def init_normal(shape, name=None):
-    return initializations.normal(shape, scale=0.01, name=name)
+#def init_normal(shape, name=None):
+#    return initializations.normal(shape, scale=0.01, name=name)
+#    return initializers.normal()
 
 def get_model(num_users, num_items, latent_dim, regs=[0,0]):
     # Input variables
     user_input = Input(shape=(1,), dtype='int32', name = 'user_input')
     item_input = Input(shape=(1,), dtype='int32', name = 'item_input')
 
-    MF_Embedding_User = Embedding(input_dim = num_users, output_dim = latent_dim, name = 'user_embedding',
-                                  init = init_normal, W_regularizer = l2(regs[0]), input_length=1)
-    MF_Embedding_Item = Embedding(input_dim = num_items, output_dim = latent_dim, name = 'item_embedding',
-                                  init = init_normal, W_regularizer = l2(regs[1]), input_length=1)   
+#    MF_Embedding_User = Embedding(input_dim = num_users, output_dim = latent_dim, name = 'user_embedding', init = init_normal, W_regularizer = l2(regs[0]), input_length=1)
+    MF_Embedding_User = Embedding(input_dim = num_users, output_dim = latent_dim, name = 'user_embedding', embeddings_initializer = 'random_normal', W_regularizer = l2(regs[0]), input_length=1)
+#    MF_Embedding_Item = Embedding(input_dim = num_items, output_dim = latent_dim, name = 'item_embedding', init = init_normal, W_regularizer = l2(regs[1]), input_length=1)   
+    MF_Embedding_Item = Embedding(input_dim = num_items, output_dim = latent_dim, name = 'item_embedding', embeddings_initializer = 'random_normal', W_regularizer = l2(regs[1]), input_length=1)   
     
     # Crucial to flatten an embedding vector!
     user_latent = Flatten()(MF_Embedding_User(user_input))
     item_latent = Flatten()(MF_Embedding_Item(item_input))
     
     # Element-wise product of user and item embeddings 
-    predict_vector = merge([user_latent, item_latent], mode = 'mul')
+    predict_vector = keras.layers.multiply([user_latent, item_latent])
     
     # Final prediction layer
     #prediction = Lambda(lambda x: K.sigmoid(K.sum(x)), output_shape=(1,))(predict_vector)
@@ -82,14 +83,14 @@ def get_model(num_users, num_items, latent_dim, regs=[0,0]):
 
 def get_train_instances(train, num_negatives):
     user_input, item_input, labels = [],[],[]
-    num_users = train.shape[0]
+    # num_users = train.shape[0]
     for (u, i) in train.keys():
         # positive instance
         user_input.append(u)
         item_input.append(i)
         labels.append(1)
         # negative instances
-        for t in xrange(num_negatives):
+        for _ in range(num_negatives):
             j = np.random.randint(num_items)
             while train.has_key((u, j)):
                 j = np.random.randint(num_items)
@@ -144,7 +145,7 @@ if __name__ == '__main__':
     
     # Train model
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
-    for epoch in xrange(epochs):
+    for epoch in range(epochs):
         t1 = time()
         # Generate training instances
         user_input, item_input, labels = get_train_instances(train, num_negatives)
