@@ -60,9 +60,8 @@ def get_model(num_users, num_items, layers = [20,10], reg_layers=[0,0]):
     user_input = Input(shape=(1,), dtype='int32', name = 'user_input')
     item_input = Input(shape=(1,), dtype='int32', name = 'item_input')
 
-    MLP_Embedding_User = Embedding(input_dim = num_users, output_dim = layers[0]/2, name = 'user_embedding', embeddings_initializer = 'random_normal', W_regularizer = l2(reg_layers[0]), input_length=1)
-    MLP_Embedding_Item = Embedding(input_dim = num_items, output_dim = layers[0]/2, name = 'item_embedding', embeddings_initializer = 'random_normal', W_regularizer = l2(reg_layers[0]), input_length=1)   
-    
+    MLP_Embedding_User = Embedding(input_dim = num_users, output_dim = layers[0]/2, name = 'user_embedding', embeddings_initializer = 'random_normal', embeddings_regularizer = l2(reg_layers[0]), input_length=1)
+    MLP_Embedding_Item = Embedding(input_dim = num_items, output_dim = layers[0]/2, name = 'item_embedding', embeddings_initializer = 'random_normal', embeddings_regularizer = l2(reg_layers[0]), input_length=1)   
     # Crucial to flatten an embedding vector!
     user_latent = Flatten()(MLP_Embedding_User(user_input))
     item_latent = Flatten()(MLP_Embedding_Item(item_input))
@@ -72,7 +71,7 @@ def get_model(num_users, num_items, layers = [20,10], reg_layers=[0,0]):
     
     # MLP layers
     for idx in range(1, num_layer):
-        layer = Dense(layers[idx], W_regularizer= l2(reg_layers[idx]), activation='relu', name = 'layer%d' %idx)
+        layer = Dense(layers[idx], kernel_regularizer= l2(reg_layers[idx]), activation='relu', name = 'layer%d' %idx)
         vector = layer(vector)
         
     # Final prediction layer
@@ -140,9 +139,9 @@ if __name__ == '__main__':
     
     # Check Init performance
     t1 = time()
-    (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, topK, evaluation_threads)
-    hr, ndcg = np.array(hits).mean(), np.array(ndcgs).mean()
-    print('Init: HR = %.4f, NDCG = %.4f [%.1f]' %(hr, ndcg, time()-t1))
+    hits, ndcgs, aucs = evaluate_model(model, testRatings, testNegatives, topK, evaluation_threads)
+    hr, ndcg, auc = np.array(hits).mean(), np.array(ndcgs).mean(), np.array(aucs).mean()
+    print('Init: HR = %.4f, NDCG = %.4f, auc = %.4f [%.1f]' %(hr, ndcg, auc, time()-t1))
     
     # Train model
     best_hr, best_ndcg, best_iter = hr, ndcg, -1
@@ -159,10 +158,10 @@ if __name__ == '__main__':
 
         # Evaluation
         if epoch %verbose == 0:
-            (hits, ndcgs) = evaluate_model(model, testRatings, testNegatives, topK, evaluation_threads)
-            hr, ndcg, loss = np.array(hits).mean(), np.array(ndcgs).mean(), hist.history['loss'][0]
-            print('Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s]' 
-                  % (epoch,  t2-t1, hr, ndcg, loss, time()-t2))
+            hits, ndcgs, aucs = evaluate_model(model, testRatings, testNegatives, topK, evaluation_threads)
+            hr, ndcg, auc, loss = np.array(hits).mean(), np.array(ndcgs).mean(), np.array(aucs).mean(), hist.history['loss'][0]
+            print('Iteration %d [%.1f s]: HR = %.4f, NDCG = %.4f, loss = %.4f [%.1f s], auc = %.4f' 
+                  % (epoch,  t2-t1, hr, ndcg, loss, time()-t2, auc))
             if hr > best_hr:
                 best_hr, best_ndcg, best_iter = hr, ndcg, epoch
                 if args.out > 0:

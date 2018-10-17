@@ -34,7 +34,7 @@ def evaluate_model(model, testRatings, testNegatives, K, num_thread):
     _testNegatives = testNegatives
     _K = K
         
-    hits, ndcgs = [],[]
+    hits, ndcgs, aucs = [], [], []
     if(num_thread > 1): # Multi-thread
         pool = multiprocessing.Pool(processes=num_thread)
         res = pool.map(eval_one_rating, range(len(_testRatings)))
@@ -45,10 +45,11 @@ def evaluate_model(model, testRatings, testNegatives, K, num_thread):
         return (hits, ndcgs)
     # Single thread
     for idx in range(len(_testRatings)):
-        (hr,ndcg) = eval_one_rating(idx)
+        hr, ndcg, auc = eval_one_rating(idx)
         hits.append(hr)
-        ndcgs.append(ndcg)      
-    return (hits, ndcgs)
+        ndcgs.append(ndcg)  
+        aucs.append(auc)    
+    return hits, ndcgs, aucs
 
 def eval_one_rating(idx):
     rating = _testRatings[idx]
@@ -67,10 +68,11 @@ def eval_one_rating(idx):
     items.pop()
     
     # Evaluate top rank list
+    auc = getAUC(map_item_score, gtItem)
     ranklist = heapq.nlargest(_K, map_item_score, key=map_item_score.get)
     hr = getHitRatio(ranklist, gtItem)
     ndcg = getNDCG(ranklist, gtItem)
-    return (hr, ndcg)
+    return hr, ndcg, auc
 
 def getHitRatio(ranklist, gtItem):
     for item in ranklist:
@@ -84,3 +86,13 @@ def getNDCG(ranklist, gtItem):
         if item == gtItem:
             return math.log(2) / math.log(i+2)
     return 0
+
+def getAUC(rankdict, gtItem):
+    gtScore = rankdict[gtItem]
+    auc = 0
+    for item, score in rankdict.items():
+        if score < gtScore:
+            auc += 1
+    auc /= float(len(rankdict))
+    return auc
+
