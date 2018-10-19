@@ -2,7 +2,8 @@ import sys
 import pandas as pd
 
 if __name__ == '__main__':
-    df = pd.read_table('Data/interview.txt', header=None)
+    df = pd.read_table(sys.argv[1], header=None)
+    print(len(df))
     df.columns = ['boss', 'geek']
 
     train_frame = pd.DataFrame()
@@ -38,6 +39,7 @@ if __name__ == '__main__':
 
     train_frame['boss'] = train_frame['boss'].map(lambda x: boss_dict[x])
     train_frame['geek'] = train_frame['geek'].map(lambda x: geek_dict[x])
+    train_frame['rating'] = 1
 
     test_frame = pd.DataFrame([
         [boss_dict[boss], geek_dict[geek]] 
@@ -59,10 +61,4 @@ if __name__ == '__main__':
 
     train_frame.to_csv('Data/interview.train.rating', index=False, header=False, sep='\t')
     test_frame.astype(int).to_csv('Data/interview.test.rating', index=False, header=False, sep='\t')
-    neg_frame.to_csv('Data/interview.train.negative', index=False, header=False)
-
-    
-    
-        
-
-
+    neg_frame.to_csv('Data/interview.test.negative', index=False, header=False, sep='\t')
